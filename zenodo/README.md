@@ -56,9 +56,24 @@ Two derived figures frame every result in the deposit: **one soil sample per 33.
 | `codes/ensemble_blog_extras.R` | the fourteen-combiner comparison, apparent versus cross-fitted |
 | `figures/`, `plots/` | figures as published in the post, and the pipeline's own diagnostic plots |
 | `docs/` | methodology, uncertainty and validation documentation written during the analysis |
+| `REPRODUCIBILITY.md` | the audit: what reproduces exactly, what reproduces approximately, and what does not reproduce at all |
 | `fsoil-6-1745154.pdf` | the published article, as accepted and typeset (CC BY 4.0) |
 
-## Reproducing the analysis
+## Reproducing the analysis -- read this before citing
+
+The full audit, with causes and fixes, is in **`REPRODUCIBILITY.md`**. The short version:
+
+| Task | Status |
+|---|---|
+| Reproduce the combiner audit (7 figures, 14 schemes, the 9.1 % diversity ceiling, the metric traps) | **yes** — `codes/ensemble_blog_figures.R` and `codes/ensemble_blog_extras.R`, no download beyond this archive |
+| Recompute honest per-model metrics | **yes** — from `outputs/*_cv_predictions.csv`: RMSE 0.1434 SVR · 0.1253 ANN · 0.1129 RF · 0.1274 XGBoost |
+| Rebuild the covariates and refit everything | **approximately** — no `renv.lock` was archived, so a refit is not bit-for-bit. The article ran on R 4.5.x; this archive was last exercised on R 4.6.0 with mlr3 1.8.0 |
+| Regenerate the 30 m maps without refitting | **no** — `models/*_model.RDS` and `data/task_motupe_scaled.RDS` were written by an older mlr3 and fail under mlr3 ≥ 1.8 (`unused argument (data_format)`, `x is not a data.table`). The maps are shipped as GeoTIFF instead |
+| Rebuild **the article's Table 4** | **no** — see `REPRODUCIBILITY.md`, section 3. The printed values appear in no artifact of this archive |
+
+Two further gaps: `modules/07_uncertainty.R` line 12 sorts its ten bootstrap seeds from an unseeded
+RNG state, so the uncertainty layer is not reproducible run to run; and no complete end-to-end
+`codes/main.R` run was performed while preparing this audit.
 
 Requires R ≥ 4.5.
 
@@ -68,8 +83,9 @@ source("modules/02_preprocessing.R")     # writes data/predictors.tif
 
 # 2. the pipeline, in order
 source("codes/main.R")                   # or codes/main_with_tuning.R for the grid search
+                                         # hours: the grid search refits everything
 
-# 3. the two scripts behind the combiner audit
+# 3. the two scripts behind the combiner audit (minutes, no download needed)
 source("codes/ensemble_blog_figures.R")  # figures 1-6
 source("codes/ensemble_blog_extras.R")   # the fourteen-combiner menu, figure 7
 ```
@@ -85,10 +101,10 @@ shipping 753 MB of derived blobs would make the deposit harder to use, not easie
 
 | Missing file | Rebuild with | Size when built |
 |---|---|---|
-| `data/predictors.tif` | `modules/02_preprocessing.R` (stacks `predictors/*.tif`) | 232 MB |
-| `data/covariates_with_xy.RDS` | `modules/02_preprocessing.R` (extraction + coordinates) | 201 MB |
-| `data/all_covariates_scaled_imputed.RDS` | `modules/02_preprocessing.R` (scaling + imputation) | 386 MB |
-| `outputs/bootstrap_uncertainty_stack_spatial_cv.tif` | `modules/07_uncertainty.R` (10 bootstrap iterations) | 166 MB |
+| `data/predictors.tif` | `modules/02_preprocessing.R:11` (stacks `predictors/*.tif`) | 232 MB |
+| `data/covariates_with_xy.RDS` | `modules/02_preprocessing.R:83` (extraction + coordinates) | 201 MB |
+| `data/all_covariates_scaled_imputed.RDS` | `modules/06_prediction.R:104` (scaling + imputation) | 386 MB |
+| `outputs/bootstrap_uncertainty_stack_spatial_cv.tif` | `modules/07_uncertainty.R:313` (10 bootstrap iterations) | 166 MB |
 
 Every product of those steps that a reader is likely to want — the prediction surfaces, the
 bootstrap moments and quantiles, the PIR layer, the out-of-fold predictions — **is** shipped.
@@ -116,6 +132,13 @@ the one input that needs Earth Engine credentials to regenerate; the derived ind
   Carbajal-Llosa and Chuchón-Remón, as published in *Frontiers in Soil Science*.
 - **The combiner audit**, when published, will be CC BY 4.0 like the article. It is not part
   of this record: what is here is the code that produces its numbers.
+
+## A note on this file
+
+The copy of `README.md` **inside** `motupe-soc-ensemble-v1.0.0.zip` was written before two
+corrections: it attributed `all_covariates_scaled_imputed.RDS` to `modules/02_preprocessing.R`
+(it is `modules/06_prediction.R`), and its reproduction section read more optimistically than the
+evidence supports. This record-level file and `REPRODUCIBILITY.md` are the current versions.
 
 ## Integrity
 

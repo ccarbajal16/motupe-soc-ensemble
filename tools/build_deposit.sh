@@ -147,6 +147,7 @@ cp zenodo/README.md      "$DEST/README.md"
 cp zenodo/LICENSE        "$DEST/LICENSE"
 cp zenodo/LICENSE-data   "$DEST/LICENSE-data"
 cp zenodo/CITATION.cff   "$DEST/CITATION.cff"
+cp zenodo/REPRODUCIBILITY.md "$DEST/REPRODUCIBILITY.md"
 
 # --- stamp the reserved DOI into the copies, never into the templates -------
 # A CITATION.cff pointing at a DOI that does not exist is worse than no

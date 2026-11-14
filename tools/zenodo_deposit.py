@@ -294,13 +294,22 @@ def cmd_upload(args) -> None:
     if not TREE.exists():
         die(f"missing {TREE.relative_to(ROOT)}: run tools/build_deposit.sh")
 
-    if args.as_zip:
+    if args.docs_only:
+        pairs = []
+        for name in ("README.md", "REPRODUCIBILITY.md", "LICENSE", "LICENSE-data",
+                     "CITATION.cff", "SHA256SUMS.txt"):
+            candidate = TREE / name
+            if candidate.exists():
+                pairs.append((candidate, name))
+        layout = ("docs only: the root documents, without the archive. Use this to "
+                  "correct the record's text without re-uploading 449 MB.")
+    elif args.as_zip:
         zpath = ROOT / "dist" / f"{TREE.name}.zip"
         if not zpath.exists():
             die(f"missing {zpath.relative_to(ROOT)}: run tools/build_deposit.sh")
         pairs = [(zpath, zpath.name)]
-        for name in ("README.md", "LICENSE", "LICENSE-data", "CITATION.cff",
-                     "SHA256SUMS.txt"):
+        for name in ("README.md", "REPRODUCIBILITY.md", "LICENSE", "LICENSE-data",
+                     "CITATION.cff", "SHA256SUMS.txt"):
             candidate = TREE / name
             if candidate.exists():
                 pairs.append((candidate, name))
@@ -436,6 +445,58 @@ def cmd_status(_args) -> None:
             print(f"\nnot uploaded yet: {len(pending)} file(s), e.g. {pending[0]}")
 
 
+def cmd_new_version(_args) -> None:
+    """Open a new version of a published record and adopt its draft."""
+    state = load_state()
+    dep = api("GET", f"/deposit/depositions/{state['id']}")
+    if not dep.get("submitted"):
+        die("this record is not published yet: keep working on the current draft "
+            f"({state.get('record_url', '')})")
+
+    attempts = [
+        ("POST", f"/deposit/depositions/{state['id']}/actions/newversion", None),
+        ("POST", f"/records/{state['id']}/versions", None),
+    ]
+    new_id, log = None, []
+    for method, path, payload in attempts:
+        ok, out = api_soft(method, path, payload)
+        log.append(f"  {'ok  ' if ok else 'fail'} {method} {path}"
+                   + ("" if ok else f" -> {out}"))
+        if ok and isinstance(out, dict):
+            latest = (out.get("links") or {}).get("latest_draft")
+            if out.get("id"):
+                new_id = out["id"]
+            elif isinstance(latest, str):
+                new_id = latest.rstrip("/").split("/")[-1]
+            if new_id:
+                break
+    for line in log:
+        print(line)
+    if not new_id:
+        die("could not open a new version through the API.\n"
+            "Do it in the browser: open the record, click 'New version', then\n"
+            f"  tools/zenodo_deposit.py adopt --id <new draft id> --doi {state.get('doi','')}")
+
+    fresh = api("GET", f"/deposit/depositions/{new_id}")
+    old = state["id"]
+    state.update({
+        "id": fresh.get("id", int(new_id)),
+        "bucket": (fresh.get("links") or {}).get("bucket", ""),
+        "record_url": (fresh.get("links") or {}).get("html", ""),
+        "uploaded": {},
+        "version_of": old,
+    })
+    save_state(state)
+    print(f"\nnew version draft: {state['id']}  (from {old})")
+    print(f"browser           : {state['record_url']}")
+    print("\nfor a text-only correction:\n"
+          "  tools/zenodo_deposit.py remove README.md\n"
+          "  tools/zenodo_deposit.py upload --docs-only\n"
+          "  tools/zenodo_deposit.py metadata\n"
+          "  tools/zenodo_deposit.py publish --confirm-publish")
+    print("\nthe concept DOI stays; this version gets its own DOI suffix.")
+
+
 def cmd_remove(args) -> None:
     """Delete files from an unpublished draft, by name."""
     state = load_state()
@@ -505,9 +566,14 @@ def main() -> None:
 
     p = sub.add_parser("upload", help="upload every staged file")
     p.add_argument("--dry-run", action="store_true", help="list, do not send")
+    p.add_argument("--docs-only", action="store_true",
+                   help="upload only the root documents (text corrections, no archive)")
     p.add_argument("--as-zip", action="store_true",
                    help="upload the archive plus the root documents, not every file")
     p.set_defaults(func=cmd_upload)
+
+    sub.add_parser("new-version",
+                   help="open a new version of a published record").set_defaults(func=cmd_new_version)
 
     p = sub.add_parser("remove", help="delete files from an unpublished draft")
     p.add_argument("names", nargs="+", help="file names as listed in the record")

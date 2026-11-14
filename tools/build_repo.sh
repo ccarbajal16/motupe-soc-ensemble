@@ -102,6 +102,7 @@ for d in "${INCLUDE_DIRS[@]}"; do
   [[ -d "$d" ]] || continue
   mkdir -p "$DEST/$d"
   rsync -a --exclude '.DS_Store' --exclude '*.qix' --exclude '*.qmd' --exclude '.deposit-state.json' \
+        --exclude 'REPRODUCIBILITY.md' \
         "$d"/ "$DEST/$d"/
 done
 
@@ -114,6 +115,7 @@ cp zenodo/LICENSE      "$DEST/LICENSE"
 cp zenodo/LICENSE-data "$DEST/LICENSE-data"
 cp zenodo/CITATION.cff "$DEST/CITATION.cff"
 cp .gitignore          "$DEST/.gitignore"
+cp zenodo/REPRODUCIBILITY.md "$DEST/REPRODUCIBILITY.md"   # at the root: the README links to it
 
 # data/README.md: say out loud what is missing from data/ and where to get it
 cat > "$DEST/data/README.md" <<'ELS'

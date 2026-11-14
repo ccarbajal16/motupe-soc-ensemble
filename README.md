@@ -18,19 +18,49 @@ Accompanies:
 This repository holds **everything that is text and small enough to diff**: the pipeline, the
 fitted model objects, the out-of-fold predictions, the observations, the documentation and the
 figures. That is enough to reproduce every table, every metric and every figure of the methods
-post, because all of them are computed from `outputs/*_cv_predictions.csv`.
+post, because all of them are computed from `outputs/*_cv_predictions.csv`. It is **not** enough to
+reproduce the article's Table 4 — see [Reproducibility, honestly](#reproducibility-honestly).
 
 It does **not** hold the covariate rasters (224 MB) or the prediction surfaces (240 MB): Git is
 the wrong place for binary grids, and a 460 MB clone is a clone nobody makes. Those live in a
 Zenodo deposit with its own DOI — see **[Data you need](#data-you-need)** below.
 
-So, honestly stated:
+## Reproducibility, honestly
 
-| Task | Needs | Works from a plain clone? |
+Every claim in this section was checked against the files here and in the deposit. Where something
+does not reproduce, it says so and gives the number. The full audit, with causes and fixes, is in
+**[`REPRODUCIBILITY.md`](REPRODUCIBILITY.md)**.
+
+| Task | Needs | Status |
 |---|---|---|
-| Recompute every metric, every table, both combiner menus, all seven figures | `outputs/*_cv_predictions.csv`, `models/*.RDS` | **yes** |
-| Refit the four learners, the ensembles and the uncertainty layer | the covariate stack (`predictors/`), from Zenodo | no — download first |
-| Produce the published 30 m prediction maps | the prediction rasters, from Zenodo | no — download first |
+| Reproduce the combiner audit: 7 figures, 14 schemes, the 9.1 % diversity ceiling, the four metric traps | this repository alone | **yes — verified**; `codes/ensemble_blog_figures.R` and `codes/ensemble_blog_extras.R` run and reproduce the published numbers |
+| Recompute honest per-model metrics | `outputs/*_cv_predictions.csv` | **yes — verified**: RMSE 0.1434 SVR · 0.1253 ANN · 0.1129 RF · 0.1274 XGBoost |
+| Rebuild the covariate stack and refit everything | `predictors/*.tif` from the deposit, plus the soil table | **yes, approximately** — no `renv.lock` was archived, so a refit is not bit-for-bit |
+| Regenerate the published 30 m maps without refitting | `models/*_model.RDS` | **no** — the serialized task and models were written by an older mlr3 and fail under mlr3 ≥ 1.8 (`unused argument (data_format)`, `x is not a data.table`). The maps are shipped in the deposit instead |
+| Rebuild **Table 4 of the article** | — | **no** |
+
+The last row deserves the space. Recomputing the article's accuracy table every legal way:
+
+| Source | SVR | ANN | RF | XGBoost |
+|---|---|---|---|---|
+| `outputs/*_cv_predictions.csv` — RMSE | 0.1434 | 0.1253 | 0.1129 | 0.1274 |
+| `models/*_cv.RDS$results` — RMSE | 0.1440 | 0.1172 | 0.1102 | 0.1210 |
+| `models/*_cv.RDS$results` — R² | −1.11 | −0.36 | −0.18 | −0.44 |
+| **Table 4 as printed** — RMSE / R² | 0.105 / 0.004 | 0.113 / 0.136 | 0.108 / 0.626 | 0.111 / 0.833 |
+
+Those printed values are not in the CSVs, not in the `.RDS` objects, and not in the metric
+workbooks. What this repository reproduces is the **honest version** of the table, and the code
+that explains the printed one: the cross-validated R² clamp in `modules/05_ensemble.R` and the
+training-scored ensemble metrics in `modules/08_evaluation_and_report.R`.
+
+So: this repository reproduces the analysis, the audit and the honest metrics. **It does not
+reproduce the numbers printed in the article's Table 4, and it should not be cited as doing so.**
+
+Two further gaps, both fixable and both documented in `REPRODUCIBILITY.md`:
+`modules/07_uncertainty.R` sorts its ten bootstrap seeds from an unseeded RNG state (line 12), so
+the uncertainty layer varies between runs even on identical package versions; and a full
+`codes/main.R` end-to-end run was not performed while preparing this audit — the wiring, the
+inputs and the per-module regeneration were verified instead, and the grid search takes hours.
 
 ## Quick start
 
@@ -67,10 +97,15 @@ cp motupe-soc-ensemble-v1.0.0/outputs/*.tif outputs/
 shasum -a 256 -c motupe-soc-ensemble-v1.0.0/SHA256SUMS.txt
 ```
 
-Three large intermediates are **deliberately absent** and rebuilt by the pipeline, so do not go
-looking for them: `data/predictors.tif`, `data/covariates_with_xy.RDS`,
-`data/all_covariates_scaled_imputed.RDS` and `outputs/bootstrap_uncertainty_stack_spatial_cv.tif`.
-The covariate stack, for instance, is three lines in `modules/02_preprocessing.R`.
+Four large intermediates are **deliberately absent** and rebuilt by the pipeline, so do not go
+looking for them. Which module writes each one:
+
+| Missing file | Written by | Size when built |
+|---|---|---|
+| `data/predictors.tif` | `modules/02_preprocessing.R:11` (stacks `predictors/*.tif`) | 232 MB |
+| `data/covariates_with_xy.RDS` | `modules/02_preprocessing.R:83` | 201 MB |
+| `data/all_covariates_scaled_imputed.RDS` | `modules/06_prediction.R:104` | 386 MB |
+| `outputs/bootstrap_uncertainty_stack_spatial_cv.tif` | `modules/07_uncertainty.R:313` | 166 MB |
 
 ## Layout
 
@@ -84,6 +119,7 @@ docs/           methodology, uncertainty and validation write-ups produced durin
 figures/        the figures of the methods post
 zenodo/         deposit metadata and licences (the deposit is built from this repository)
 tools/          build_deposit.sh, zenodo_deposit.py -- how the Zenodo record is made
+REPRODUCIBILITY.md   what reproduces, what does not, and why -- read this before citing
 ```
 
 ## The finding, in one line
