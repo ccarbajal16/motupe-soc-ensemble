@@ -80,7 +80,8 @@ data/all_covariates_scaled_imputed.RDS rebuilt by modules/02_preprocessing.R
 outputs/bootstrap_uncertainty_stack*.tif  intermediate; the products are in the deposit
 plots/ (2.3 MB)                        pipeline diagnostics, redundant with figures/
 Figuras_JPG/, fsoil-*.pdf              the published article, reachable at its DOI
-2026-08-29-should-you-combine-your-models.md   included only on request (see --with-post)
+2026-08-29-... .md (blog post)                  lives in the blog-posts repository;
+                                               included here only with --with-post
 .PHONY: junk                           .DS_Store, *.qix, .atl/
 EOF
 
