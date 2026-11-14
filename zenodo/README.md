@@ -1,8 +1,9 @@
 # Soil organic carbon mapping in the Motupe River watershed, northern Peru
 
 Data and code for the ensemble machine-learning analysis of soil organic carbon (SOC)
-in the Motupe River watershed (Lambayeque, Peru), and for the methods audit published as
-*"Should you combine your models at all? What our own published ensemble taught us."*
+in the Motupe River watershed (Lambayeque, Peru), together with the R scripts that reproduce
+the methods audit on ensemble combination. The audit itself is written up separately; this
+record is the data and the code behind it.
 
 This deposit accompanies the peer-reviewed article:
 
@@ -51,11 +52,10 @@ Two derived figures frame every result in the deposit: **one soil sample per 33.
 | `outputs/bootstrap_*.tif` | bootstrap uncertainty products: mean, SD, 5/50/95 quantiles, 90 % interval width, relative interval and PIR |
 | `outputs/spatial_cv_report.md` | the auto-generated metrics table whose two columns disagree |
 | `codes/`, `modules/` | the analysis pipeline (R, `mlr3` + `terra` + `gstat`) |
-| `codes/ensemble_blog_figures.R` | reproduces every number and figure of the methods post |
+| `codes/ensemble_blog_figures.R` | reproduces every number and figure of the combiner audit |
 | `codes/ensemble_blog_extras.R` | the fourteen-combiner comparison, apparent versus cross-fitted |
 | `figures/`, `plots/` | figures as published in the post, and the pipeline's own diagnostic plots |
 | `docs/` | methodology, uncertainty and validation documentation written during the analysis |
-| `2026-08-29-should-you-combine-your-models.md` | the methods post this deposit supports |
 | `fsoil-6-1745154.pdf` | the published article, as accepted and typeset (CC BY 4.0) |
 
 ## Reproducing the analysis
@@ -69,7 +69,7 @@ source("modules/02_preprocessing.R")     # writes data/predictors.tif
 # 2. the pipeline, in order
 source("codes/main.R")                   # or codes/main_with_tuning.R for the grid search
 
-# 3. the two scripts behind the methods post
+# 3. the two scripts behind the combiner audit
 source("codes/ensemble_blog_figures.R")  # figures 1-6
 source("codes/ensemble_blog_extras.R")   # the fourteen-combiner menu, figure 7
 ```
@@ -114,7 +114,8 @@ the one input that needs Earth Engine credentials to regenerate; the derived ind
   licence as the article, so a single attribution covers both.
 - **The article PDF** (`fsoil-6-1745154.pdf`): CC BY 4.0, © 2026 Salazar-Coronel,
   Carbajal-Llosa and Chuchón-Remón, as published in *Frontiers in Soil Science*.
-- **The methods post** (`.md` at the root): CC BY 4.0.
+- **The combiner audit**, when published, will be CC BY 4.0 like the article. It is not part
+  of this record: what is here is the code that produces its numbers.
 
 ## Integrity
 

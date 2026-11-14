@@ -53,13 +53,3 @@ references:
     start: 1745154
     year: 2026
     doi: "10.3389/fsoil.2026.1745154"
-  - type: generic
-    title: "Should you combine your models at all? What our own published ensemble taught us"
-    year: 2026
-    authors:
-      - family-names: Salazar-Coronel
-        given-names: Wilian
-      - family-names: Carbajal-Llosa
-        given-names: Carlos
-      - family-names: Chuchón-Remón
-        given-names: Rodolfo

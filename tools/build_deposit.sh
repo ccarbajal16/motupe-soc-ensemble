@@ -78,7 +78,9 @@ INCLUDE_DATA=(
 )
 
 INCLUDE_ROOT=(
-  "2026-08-29-should-you-combine-your-models.md"
+  # the methods post is deliberately NOT here: it is still under review and the
+  # record must contain only what makes the study reproducible. Adding it back
+  # means re-uploading the whole archive, because it lives inside the zip.
   "fsoil-6-1745154.pdf"
 )
 
