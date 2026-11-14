@@ -418,8 +418,16 @@ def cmd_status(_args) -> None:
     sent = {f.get("filename", "") for f in files}
     zip_name = f"{TREE.name}.zip"
     if zip_name in sent:
-        print(f"\nlayout     : one archive ({zip_name}) plus the root documents. "
-              "The 144 data and code files live inside it.")
+        # count what the archive actually holds instead of hardcoding a number
+        inside = ""
+        local_zip = ROOT / "dist" / zip_name
+        if local_zip.exists():
+            import zipfile
+            with zipfile.ZipFile(local_zip) as zf:
+                n_files = sum(1 for i in zf.infolist() if not i.is_dir())
+            inside = f" The {n_files} data and code files live inside it."
+        print(f"\nlayout     : one archive ({zip_name}) plus the root documents."
+              + inside)
     else:
         missing = [p.relative_to(TREE).as_posix() for p in TREE.rglob('*')
                    if p.is_file()] if TREE.exists() else []
