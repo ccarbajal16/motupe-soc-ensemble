@@ -428,6 +428,39 @@ def cmd_status(_args) -> None:
             print(f"\nnot uploaded yet: {len(pending)} file(s), e.g. {pending[0]}")
 
 
+def cmd_remove(args) -> None:
+    """Delete files from an unpublished draft, by name."""
+    state = load_state()
+    dep = api("GET", f"/deposit/depositions/{state['id']}")
+    if dep.get("submitted"):
+        die("this record is already published: files cannot be removed through "
+            "the API. Use a new version in the browser instead.")
+    remote = {f.get("filename"): f for f in dep.get("files", [])}
+    wanted = set(args.names)
+    for name in sorted(wanted - set(remote)):
+        print(f"not in the record: {name}")
+    removed = 0
+    for name in sorted(wanted & set(remote)):
+        entry = remote[name]
+        ok, out = (False, "")
+        if entry.get("id"):
+            ok, out = api_soft("DELETE",
+                               f"/deposit/depositions/{state['id']}/files/{entry['id']}")
+        if not ok:
+            ok, out = api_soft("DELETE", f"/records/{state['id']}/draft/files/{name}")
+        if ok:
+            state.get("uploaded", {}).pop(name, None)
+            save_state(state)
+            print(f"removed {name}")
+            removed += 1
+        else:
+            print(f"could not remove {name}: {out}")
+    print(f"\n{removed} file(s) removed from deposition {state['id']}")
+    if removed == 0 and wanted & set(remote):
+        print("Nothing changed. If the API refuses, delete them in the browser: "
+              f"{state.get('record_url', base_url())}")
+
+
 def cmd_publish(args) -> None:
     state = load_state()
     if not args.confirm_publish:
@@ -467,6 +500,10 @@ def main() -> None:
     p.add_argument("--as-zip", action="store_true",
                    help="upload the archive plus the root documents, not every file")
     p.set_defaults(func=cmd_upload)
+
+    p = sub.add_parser("remove", help="delete files from an unpublished draft")
+    p.add_argument("names", nargs="+", help="file names as listed in the record")
+    p.set_defaults(func=cmd_remove)
 
     sub.add_parser("metadata", help="apply zenodo/metadata.json").set_defaults(func=cmd_metadata)
     sub.add_parser("status", help="show the current state of the record").set_defaults(func=cmd_status)
