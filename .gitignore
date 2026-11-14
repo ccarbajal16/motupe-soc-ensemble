@@ -4,6 +4,12 @@
 # --- Zenodo token state: contains the deposition id, never the token -------
 /zenodo/.deposit-state.json
 
+# --- OS/sync conflict copies: "name 2.ext" living beside "name.ext" -------
+# iCloud and Drive create these inside dist/ between builds. They are never
+# data, and the packaging scripts refuse to run when they see one.
+* [0-9]
+* [0-9].*
+
 # --- macOS noise -----------------------------------------------------------
 .DS_Store
 **/.DS_Store
