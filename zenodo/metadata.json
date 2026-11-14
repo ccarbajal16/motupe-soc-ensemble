@@ -44,8 +44,8 @@
         "resource_type": "publication-article"
       },
       {
-        "identifier": "https://github.com/TODO-OWNER/TODO-REPO",
-        "relation": "isIdenticalTo",
+        "identifier": "https://github.com/ccarbajal16/motupe-soc-ensemble",
+        "relation": "isSupplementedBy",
         "scheme": "url",
         "resource_type": "software"
       }

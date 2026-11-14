@@ -3,10 +3,9 @@ message: "If you use these data or this code, please cite both this deposit and 
 type: dataset
 title: "Soil organic carbon mapping in the Motupe River watershed, northern Peru: observations, covariates, fitted models and prediction surfaces"
 version: 1.0.0
-doi: "TODO-DEPOSIT-DOI"
+# DOI-LINE
 date-released: "2026-11-13"
 license: CC-BY-4.0
-url: "https://doi.org/TODO-DEPOSIT-DOI"
 abstract: >-
   Soil organic carbon (SOC) observations (n = 109), 13 covariate layers at 30 m,
   the fitted base learners and ensembles, the out-of-fold predictions behind the

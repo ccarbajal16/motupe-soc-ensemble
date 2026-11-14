@@ -57,7 +57,8 @@ Two directories are downloaded, not cloned:
 | `outputs/*.tif` | the four base-learner surfaces, the two ensembles, and the bootstrap uncertainty products (mean, SD, quantiles, interval width, relative interval, PIR) | 240 MB | Zenodo deposit |
 
 ```bash
-# the deposit DOI is in the badge at the top of this README
+# <RECORD_ID> is the numeric id of the Zenodo deposit; once the record is
+# published it is also the DOI suffix and appears in the badge above
 curl -L -o motupe-data.zip "https://zenodo.org/records/<RECORD_ID>/files/motupe-soc-ensemble-v1.0.0.zip"
 unzip motupe-data.zip
 cp -R motupe-soc-ensemble-v1.0.0/predictors .

@@ -147,5 +147,6 @@ The citation for this deposit, with its own DOI, is in `CITATION.cff`. Deposit D
 ## Contact
 
 Corresponding author of the article: Carlos Carbajal-Llosa. Issues with the code or the data in
-this deposit are best raised as issues on the repository, so that the answer stays visible to
-the next reader.
+this deposit are best raised on the repository —
+https://github.com/ccarbajal16/motupe-soc-ensemble — so that the answer stays visible to the
+next reader.

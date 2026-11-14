@@ -158,6 +158,7 @@ if [[ -n "$DEPOSIT_DOI" ]]; then
   for f in "$DEST/README.md" "$DEST/CITATION.cff"; do
     perl -pi -e "s{TODO-DEPOSIT-DOI}{$DEPOSIT_DOI}g" "$f"
   done
+  perl -pi -e "s{^# DOI-LINE\$}{doi: \"$DEPOSIT_DOI\"\nurl: \"https://doi.org/$DEPOSIT_DOI\"}" "$DEST/CITATION.cff"
   echo "DOI stamped into README.md and CITATION.cff: $DEPOSIT_DOI"
 elif [[ $ALLOW_PLACEHOLDER -eq 1 ]]; then
   echo "WARNING: no reserved DOI yet -- README.md and CITATION.cff keep TODO-DEPOSIT-DOI" >&2

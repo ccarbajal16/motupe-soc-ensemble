@@ -86,6 +86,15 @@ EOF
 
 [[ $DRY_RUN -eq 1 ]] && { echo; echo "=== would stage into $DEST ==="; printf '  %s/\n' "${INCLUDE_DIRS[@]}"; exit 0; }
 
+# the staged tree is a real git repository once it has been pushed, so its
+# .git must survive a rebuild
+GIT_BACKUP=""
+if [[ -d "$DEST/.git" ]]; then
+  GIT_BACKUP="dist/.github-git"
+  rm -rf "$GIT_BACKUP"
+  mv "$DEST/.git" "$GIT_BACKUP"
+fi
+
 rm -rf "$DEST"
 mkdir -p "$DEST"/{data,outputs}
 
@@ -144,11 +153,13 @@ if [[ -n "$DEPOSIT_DOI" ]]; then
   done
   BADGE="[![DOI](https://zenodo.org/badge/DOI/$DEPOSIT_DOI.svg)](https://doi.org/$DEPOSIT_DOI)"
   perl -pi -e "s{<!-- DOI-BADGE -->}{$BADGE}" "$DEST/README.md"
+  perl -pi -e "s{^# DOI-LINE\$}{doi: \"$DEPOSIT_DOI\"\nurl: \"https://doi.org/$DEPOSIT_DOI\"}" "$DEST/CITATION.cff"
   echo "DOI stamped: $DEPOSIT_DOI (record $RECORD_ID)"
 elif [[ $ALLOW_PLACEHOLDER -eq 1 ]]; then
   # a badge pointing at a DOI that does not exist renders as a broken image,
   # so the marker is dropped rather than left in place
   perl -ni -e 'print unless m{<!-- DOI-BADGE -->}' "$DEST/README.md"
+  perl -ni -e 'print unless m{^# DOI-LINE$}' "$DEST/CITATION.cff"
   echo "WARNING: no reserved DOI yet -- badge omitted, README/CITATION keep the placeholder" >&2
 else
   echo "refusing to build: no reserved DOI in zenodo/.deposit-state.json" >&2
@@ -156,10 +167,16 @@ else
   exit 1
 fi
 
+[[ -n "$GIT_BACKUP" ]] && mv "$GIT_BACKUP" "$DEST/.git"
+
 echo
 echo "=== STAGED FOR GITHUB ==="
 du -sh "$DEST"/* | sort -hr
 echo
-echo "files: $(find "$DEST" -type f | wc -l | tr -d ' ')"
-echo "size:  $(du -sh "$DEST" | cut -f1)"
+# count the staged content, not the .git directory that survives rebuilds
+count=$(find "$DEST" -type f -not -path '*/.git/*' | wc -l | tr -d ' ')
+bytes=$(find "$DEST" -type f -not -path '*/.git/*' -print0 \
+        | xargs -0 stat -f%z | awk '{s+=$1} END {printf "%.1f", s/1048576}')
+echo "files: $count"
+echo "size:  ${bytes} MB"
 echo "tree:  $DEST"
