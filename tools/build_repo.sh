@@ -139,8 +139,17 @@ here, fully.
 ELS
 
 # --- optional: the methods post --------------------------------------------
+# The post lives in its own repository now (blog-posts), so look there first and
+# fall back to a local copy, without assuming either exists.
+POST_FILE="2026-08-29-should-you-combine-your-models.md"
+[[ -f "$POST_FILE" ]] || POST_FILE="../blog-posts/$POST_FILE"
 if [[ $WITH_POST -eq 1 ]]; then
-  cp 2026-08-29-should-you-combine-your-models.md "$DEST/"
+  if [[ -f "$POST_FILE" ]]; then
+    cp "$POST_FILE" "$DEST/"
+    echo "included the methods post from $POST_FILE"
+  else
+    echo "warning: --with-post given but the post was not found; skipping it" >&2
+  fi
 fi
 
 # --- the ambiguity guard ----------------------------------------------------
