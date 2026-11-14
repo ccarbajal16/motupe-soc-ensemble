@@ -169,6 +169,18 @@ else
   exit 1
 fi
 
+# --- the ambiguity guard ----------------------------------------------------
+# --- guard: refuse to package ambiguous or duplicate filenames -------------
+# A Finder "duplicate" arrives as "name 3.ext" next to "name.ext": two files,
+# same content, different names, and both would end up in the deposit.
+SPACED="$(cd "$DEST" && find . -type f -name '* *' -not -path './.git/*' | head -10)"
+if [[ -n "$SPACED" ]]; then
+  echo "refusing to package: filenames containing spaces (Finder-style duplicates?)" >&2
+  echo "$SPACED" >&2
+  echo "remove them from the source tree and re-run." >&2
+  exit 1
+fi
+
 # --- checksums --------------------------------------------------------------
 ( cd "$DEST" && find . -type f ! -name SHA256SUMS.txt -print0 \
     | sort -z | xargs -0 shasum -a 256 > SHA256SUMS.txt )

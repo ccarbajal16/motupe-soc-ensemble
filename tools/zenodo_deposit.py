@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import mimetypes
 import os
 import sys
 import urllib.error
@@ -294,29 +293,64 @@ def cmd_upload(args) -> None:
     state = load_state()
     if not TREE.exists():
         die(f"missing {TREE.relative_to(ROOT)}: run tools/build_deposit.sh")
-    files = sorted(p for p in TREE.rglob("*") if p.is_file())
-    total = sum(p.stat().st_size for p in files)
-    print(f"{len(files)} files, {human(total)}, into deposition {state['id']}\n")
+
+    if args.as_zip:
+        zpath = ROOT / "dist" / f"{TREE.name}.zip"
+        if not zpath.exists():
+            die(f"missing {zpath.relative_to(ROOT)}: run tools/build_deposit.sh")
+        pairs = [(zpath, zpath.name)]
+        for name in ("README.md", "LICENSE", "LICENSE-data", "CITATION.cff",
+                     "SHA256SUMS.txt"):
+            candidate = TREE / name
+            if candidate.exists():
+                pairs.append((candidate, name))
+        layout = ("zip mode: one archive plus the root documents. Zenodo shows the "
+                  "record as a few files, and the structure survives inside the archive.")
+    else:
+        pairs = [(p, p.relative_to(TREE).as_posix())
+                 for p in sorted(TREE.rglob("*")) if p.is_file()]
+        layout = ("path mode: the directory structure is preserved in the file keys, "
+                  "so a reader can download EVI.tif without the 450 MB archive.")
+
+    total = sum(p.stat().st_size for p, _ in pairs)
+    print(f"deposition {state['id']}: {len(pairs)} files, {human(total)}")
+    print(layout, "\n")
 
     uploaded = state.get("uploaded", {})
-    for i, path in enumerate(files, 1):
-        rel = path.relative_to(TREE).as_posix()
+    failed: list[str] = []
+    for i, (path, key) in enumerate(pairs, 1):
         size = path.stat().st_size
-        if uploaded.get(rel) == size:
-            print(f"[{i:>3}/{len(files)}] skip  {rel}  (already there, {human(size)})")
+        if uploaded.get(key) == size:
+            print(f"[{i:>3}/{len(pairs)}] skip  {key}  (already there, {human(size)})")
             continue
         if args.dry_run:
-            print(f"[{i:>3}/{len(files)}] would upload {rel}  ({human(size)})")
+            print(f"[{i:>3}/{len(pairs)}] would upload {key}  ({human(size)})")
             continue
-        ctype = mimetypes.guess_type(rel)[0] or "application/octet-stream"
-        api("PUT", f"{state['bucket']}/{rel}", raw=path.read_bytes(),
-            content_type=ctype)
-        uploaded[rel] = size
+        ok, out = api_soft("PUT", f"{state['bucket']}/{key}",
+                           raw=path.read_bytes(),
+                           content_type="application/octet-stream")
+        if not ok:
+            failed.append(f"{key} -> {out}")
+            print(f"[{i:>3}/{len(pairs)}] FAIL  {key} -> {out}")
+            # a rejected file key is systematic, not transient: stop and explain
+            if "415" not in str(out) and len(failed) >= 3:
+                break
+            continue
+        uploaded[key] = size
         state["uploaded"] = uploaded
         save_state(state)
-        print(f"[{i:>3}/{len(files)}] sent  {rel}  ({human(size)})")
+        print(f"[{i:>3}/{len(pairs)}] sent  {key}  ({human(size)})")
 
-    print(f"\n{'would send' if args.dry_run else 'sent'} {len(files)} files")
+    if failed:
+        print(f"\n{len(failed)} file(s) failed. Nothing already sent is lost: this "
+              "command is resumable.")
+        if any("/" in f.split(" -> ")[0] for f in failed):
+            print("\nThe failures involve file keys with slashes. If Zenodo refuses "
+                  "nested keys, use the archive layout instead:\n"
+                  "  tools/zenodo_deposit.py upload --as-zip")
+        raise SystemExit(1)
+
+    print(f"\n{'would send' if args.dry_run else 'sent'} {len(pairs)} files")
     if args.dry_run:
         print("(dry run: nothing was uploaded)")
 
@@ -395,6 +429,8 @@ def main() -> None:
 
     p = sub.add_parser("upload", help="upload every staged file")
     p.add_argument("--dry-run", action="store_true", help="list, do not send")
+    p.add_argument("--as-zip", action="store_true",
+                   help="upload the archive plus the root documents, not every file")
     p.set_defaults(func=cmd_upload)
 
     sub.add_parser("metadata", help="apply zenodo/metadata.json").set_defaults(func=cmd_metadata)

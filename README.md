@@ -3,6 +3,7 @@
 Reproducible R code for the soil organic carbon (SOC) mapping of the **Motupe River
 watershed** (Lambayeque, Peru) and for the methods audit published alongside it.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24212915.svg)](https://doi.org/10.5281/zenodo.24212915)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 [![License: CC BY 4.0](https://img.shields.io/badge/data-CC%20BY%204.0-lightgrey.svg)](LICENSE-data)
 
@@ -57,9 +58,9 @@ Two directories are downloaded, not cloned:
 | `outputs/*.tif` | the four base-learner surfaces, the two ensembles, and the bootstrap uncertainty products (mean, SD, quantiles, interval width, relative interval, PIR) | 240 MB | Zenodo deposit |
 
 ```bash
-# <RECORD_ID> is the numeric id of the Zenodo deposit; once the record is
+# 24212915 is the numeric id of the Zenodo deposit; once the record is
 # published it is also the DOI suffix and appears in the badge above
-curl -L -o motupe-data.zip "https://zenodo.org/records/<RECORD_ID>/files/motupe-soc-ensemble-v1.0.0.zip"
+curl -L -o motupe-data.zip "https://zenodo.org/records/24212915/files/motupe-soc-ensemble-v1.0.0.zip"
 unzip motupe-data.zip
 cp -R motupe-soc-ensemble-v1.0.0/predictors .
 cp motupe-soc-ensemble-v1.0.0/outputs/*.tif outputs/

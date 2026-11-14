@@ -141,6 +141,18 @@ if [[ $WITH_POST -eq 1 ]]; then
   cp 2026-08-29-should-you-combine-your-models.md "$DEST/"
 fi
 
+# --- the ambiguity guard ----------------------------------------------------
+# --- guard: refuse to package ambiguous or duplicate filenames -------------
+# A Finder "duplicate" arrives as "name 3.ext" next to "name.ext": two files,
+# same content, different names, and both would end up in the deposit.
+SPACED="$(cd "$DEST" && find . -type f -name '* *' -not -path './.git/*' | head -10)"
+if [[ -n "$SPACED" ]]; then
+  echo "refusing to package: filenames containing spaces (Finder-style duplicates?)" >&2
+  echo "$SPACED" >&2
+  echo "remove them from the source tree and re-run." >&2
+  exit 1
+fi
+
 # --- stamp the reserved DOI, as build_deposit.sh does ----------------------
 DEPOSIT_DOI=""
 if [[ -f zenodo/.deposit-state.json ]]; then
