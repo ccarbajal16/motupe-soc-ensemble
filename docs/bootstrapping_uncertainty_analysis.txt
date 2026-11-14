@@ -1,0 +1,21 @@
+This R script implements a bootstrap ensemble uncertainty quantification analysis for soil organic carbon (SOC) prediction models. The code demonstrates a sophisticated approach to estimating prediction uncertainty by combining multiple machine learning models through bootstrap resampling.
+
+Bootstrap Ensemble Strategy
+The script begins by setting up a bootstrap framework with 10 iterations, each using a different random seed. The core function bootstrap_ensemble_prediction() performs several critical steps for each bootstrap iteration. First, it creates a bootstrap sample by randomly sampling with replacement from the original dataset, ensuring robust uncertainty estimation. The function then trains three different machine learning models on each bootstrap sample: a linear regression model, a random forest (using the ranger package), and a decision tree (using rpart).
+
+Model Training and Fallback Logic
+The model training section includes extensive error handling and fallback mechanisms. If the random forest or decision tree models fail to train, the function falls back to using the linear model. This defensive programming approach ensures that the analysis can continue even when some models encounter issues with specific bootstrap samples. The models are configured with conservative parameters - for example, the random forest uses only 30 trees and single-threaded execution to balance performance with computational efficiency.
+
+Spatial Prediction and Ensemble Creation
+For each trained model, the script generates spatial predictions across the study area using the terra::predict() function. The predictions are then combined into an ensemble by averaging the valid predictions from all successfully trained models. This ensemble approach helps reduce model-specific biases and provides more robust predictions than any single model alone.
+
+Quality Control and Validation
+The script implements rigorous quality control throughout the process. It validates that predictions are valid SpatRaster objects, checks for excessive NA values, and ensures spatial consistency across bootstrap iterations. The code requires at least 30% valid pixels in each prediction and at least 5 successful bootstrap iterations before proceeding with uncertainty calculations.
+
+Uncertainty Metrics Calculation
+Once sufficient valid bootstrap predictions are collected, the script calculates comprehensive uncertainty metrics. These include the bootstrap mean (central prediction), standard deviation (absolute uncertainty), coefficient of variation (relative uncertainty), and prediction intervals (5th and 95th percentiles). The 90% prediction interval width and its relative version provide intuitive measures of prediction uncertainty.
+
+Fallback Strategy and Output Generation
+If the bootstrap analysis fails to produce sufficient valid predictions, the script implements a fallback strategy that loads a previously computed ensemble prediction and assigns conservative uncertainty estimates. Finally, all uncertainty rasters are clipped to the study area boundary and saved as both individual GeoTIFF files and a combined uncertainty stack.
+
+This approach provides a robust framework for quantifying spatial prediction uncertainty while handling the practical challenges of working with multiple models and real-world geospatial data.

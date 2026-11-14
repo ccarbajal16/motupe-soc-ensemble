@@ -1,0 +1,65 @@
+cff-version: 1.2.0
+message: "If you use these data or this code, please cite both this deposit and the article it supports."
+type: dataset
+title: "Soil organic carbon mapping in the Motupe River watershed, northern Peru: observations, covariates, fitted models and prediction surfaces"
+version: 1.0.0
+doi: "TODO-DEPOSIT-DOI"
+date-released: "2026-11-13"
+license: CC-BY-4.0
+url: "https://doi.org/TODO-DEPOSIT-DOI"
+abstract: >-
+  Soil organic carbon (SOC) observations (n = 109), 13 covariate layers at 30 m,
+  the fitted base learners and ensembles, the out-of-fold predictions behind the
+  published accuracy metrics, and the 30 m prediction and uncertainty surfaces for
+  the Motupe River watershed (Lambayeque, Peru; 3,673.66 km2, 0-3,500 m a.s.l.).
+  The archive also contains the R pipeline and the two scripts that reproduce every
+  number and figure of the methods post on ensemble combination. SOC ranges from
+  0.42 % to 0.87 % (mean 0.649 %, SD 0.1055 %). All metrics in the post are computed
+  from out-of-fold predictions under 5-fold spatial block cross-validation.
+keywords:
+  - soil organic carbon
+  - digital soil mapping
+  - ensemble machine learning
+  - spatial cross-validation
+  - forecast combination
+  - dry forest
+  - Lambayeque
+  - Peru
+authors:
+  - family-names: Salazar-Coronel
+    given-names: Wilian
+    affiliation: "Estación Experimental Agraria Vista Florida, INIA; Universidad Nacional Agraria La Molina"
+    orcid: "https://orcid.org/0000-0002-1574-2125"
+  - family-names: Carbajal-Llosa
+    given-names: Carlos
+    affiliation: "Centro Experimental La Molina, INIA"
+    orcid: "https://orcid.org/0000-0002-1638-8076"
+  - family-names: Chuchón-Remón
+    given-names: Rodolfo
+    affiliation: "Estación Experimental Agraria El Porvenir, INIA"
+    orcid: "https://orcid.org/0000-0001-7016-7314"
+references:
+  - type: article
+    title: "Soil organic carbon content mapping along the coast of northern Peru: an ensemble machine learning approach"
+    authors:
+      - family-names: Salazar-Coronel
+        given-names: Wilian
+      - family-names: Carbajal-Llosa
+        given-names: Carlos
+      - family-names: Chuchón-Remón
+        given-names: Rodolfo
+    journal: Frontiers in Soil Science
+    volume: 6
+    start: 1745154
+    year: 2026
+    doi: "10.3389/fsoil.2026.1745154"
+  - type: generic
+    title: "Should you combine your models at all? What our own published ensemble taught us"
+    year: 2026
+    authors:
+      - family-names: Salazar-Coronel
+        given-names: Wilian
+      - family-names: Carbajal-Llosa
+        given-names: Carlos
+      - family-names: Chuchón-Remón
+        given-names: Rodolfo

@@ -1,0 +1,27 @@
+# --- staging area for the Zenodo deposit: never commit it -------------------
+/dist/
+
+# --- Zenodo token state: contains the deposition id, never the token -------
+/zenodo/.deposit-state.json
+
+# --- macOS noise -----------------------------------------------------------
+.DS_Store
+**/.DS_Store
+._*
+
+# --- QGIS sidecar caches ---------------------------------------------------
+*.qix
+
+# --- the derived intermediates the deposit deliberately does not carry -----
+# (they are rebuilt by modules/02_preprocessing.R; see zenodo/README.md)
+# they stay on disk locally, they just should not be versioned if this
+# repository is ever pushed with a normal git history
+data/predictors.tif
+data/covariates_with_xy.RDS
+data/all_covariates_scaled_imputed.RDS
+outputs/bootstrap_uncertainty_stack_spatial_cv.tif
+
+# --- R session noise -------------------------------------------------------
+.Rhistory
+.RData
+.Rproj.user/
