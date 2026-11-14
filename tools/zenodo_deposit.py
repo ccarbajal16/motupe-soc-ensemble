@@ -312,9 +312,39 @@ def cmd_upload(args) -> None:
         layout = ("path mode: the directory structure is preserved in the file keys, "
                   "so a reader can download EVI.tif without the 450 MB archive.")
 
+    # refuse ambiguous names in both layouts: a Finder/iCloud conflict copy
+    # ("name 3.ext" beside "name.ext") would otherwise ship twice
+    if args.as_zip:
+        import zipfile
+        with zipfile.ZipFile(pairs[0][0]) as zf:
+            names = zf.namelist()
+        bad = [n for n in names if " " in os.path.basename(n)]
+        if bad:
+            die("the archive contains ambiguous filenames:\n  "
+                + "\n  ".join(bad[:10])
+                + "\nrebuild it: tools/build_deposit.sh")
+        print(f"archive verified: {len(names)} entries, no ambiguous names")
+    bad_keys = [k for _, k in pairs if " " in k]
+    if bad_keys:
+        die("refusing to upload filenames with spaces:\n  "
+            + "\n  ".join(bad_keys[:10])
+            + "\nthey are duplicates from the OS, not data. Rebuild with "
+              "tools/build_deposit.sh, which drops them.")
+
     total = sum(p.stat().st_size for p, _ in pairs)
     print(f"deposition {state['id']}: {len(pairs)} files, {human(total)}")
     print(layout, "\n")
+
+    ok_remote, remote = api_soft("GET", f"/deposit/depositions/{state['id']}")
+    if ok_remote and isinstance(remote, dict):
+        remote_names = {f.get("filename", "") for f in remote.get("files", [])}
+        zip_name = f"{TREE.name}.zip"
+        if args.as_zip and any(not n.endswith(".zip") and "/" in n for n in remote_names):
+            print("note: the record already holds files in the individual layout; "
+                  "publishing both would duplicate the content\n")
+        if not args.as_zip and zip_name in remote_names:
+            print("note: the record already holds the archive; uploading the "
+                  "individual files too would duplicate the content\n")
 
     uploaded = state.get("uploaded", {})
     failed: list[str] = []
@@ -385,12 +415,17 @@ def cmd_status(_args) -> None:
     print(f"files      : {len(files)}, {human(size)}")
     print(f"submitted  : {dep.get('submitted', False)}")
     print(f"browser    : {dep['links'].get('html', '')}")
-    missing = [p.relative_to(TREE).as_posix() for p in TREE.rglob('*')
-               if p.is_file()] if TREE.exists() else []
-    sent = {f.get("filename") for f in files}
-    pending = [m for m in missing if m not in sent and f"motupe-soc-ensemble-v1.0.0/{m}" not in sent]
-    if pending:
-        print(f"\nnot uploaded yet: {len(pending)} file(s), e.g. {pending[0]}")
+    sent = {f.get("filename", "") for f in files}
+    zip_name = f"{TREE.name}.zip"
+    if zip_name in sent:
+        print(f"\nlayout     : one archive ({zip_name}) plus the root documents. "
+              "The 144 data and code files live inside it.")
+    else:
+        missing = [p.relative_to(TREE).as_posix() for p in TREE.rglob('*')
+                   if p.is_file()] if TREE.exists() else []
+        pending = [m for m in missing if m not in sent]
+        if pending:
+            print(f"\nnot uploaded yet: {len(pending)} file(s), e.g. {pending[0]}")
 
 
 def cmd_publish(args) -> None:
