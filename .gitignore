@@ -21,6 +21,10 @@ data/covariates_with_xy.RDS
 data/all_covariates_scaled_imputed.RDS
 outputs/bootstrap_uncertainty_stack_spatial_cv.tif
 
+# --- python bytecode ------------------------------------------------------
+__pycache__/
+*.pyc
+
 # --- R session noise -------------------------------------------------------
 .Rhistory
 .RData
