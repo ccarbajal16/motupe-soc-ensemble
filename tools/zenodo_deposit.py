@@ -445,6 +445,41 @@ def cmd_status(_args) -> None:
             print(f"\nnot uploaded yet: {len(pending)} file(s), e.g. {pending[0]}")
 
 
+def cmd_edit_metadata(_args) -> None:
+    """Correct the metadata of a PUBLISHED record in place (no new version, no new DOI).
+
+    Files are frozen while a record is published, so this only touches title,
+    description, version, notes, keywords and relations.
+    """
+    state = load_state()
+    dep = api("GET", f"/deposit/depositions/{state['id']}")
+    if not dep.get("submitted"):
+        die("this record is not published: just run `metadata` on the draft")
+
+    ok, out = api_soft("POST", f"/deposit/depositions/{state['id']}/actions/edit", {})
+    print(f"  {'ok  ' if ok else 'fail'} POST actions/edit"
+          + ("" if ok else f" -> {out}"))
+    if not ok:
+        die("could not unlock the record for editing through the API.\n"
+            f"Edit it in the browser instead: {state.get('record_url', base_url())}")
+
+    meta = metadata_payload()
+    api("PUT", f"/deposit/depositions/{state['id']}", meta)
+    print("metadata updated on the published record")
+    print(f"  version : {meta['metadata'].get('version')}")
+
+    ok, out = api_soft("POST", f"/deposit/depositions/{state['id']}/actions/publish", {})
+    if not ok:
+        die(f"the metadata was written but the record stayed in edit mode: {out}\n"
+            f"Re-publish it in the browser: {state.get('record_url', base_url())}")
+    doi = (out.get("doi") or (out.get("metadata") or {}).get("doi") or state["doi"])
+    state["doi"] = doi
+    if out.get("conceptdoi"):
+        state["concept_doi"] = out["conceptdoi"]
+    save_state(state)
+    print(f"re-published. DOI unchanged: {doi}")
+
+
 def cmd_new_version(_args) -> None:
     """Open a new version of a published record and adopt its draft."""
     state = load_state()
@@ -542,8 +577,17 @@ def cmd_publish(args) -> None:
     print(f"  files : {len(dep.get('files', []))}")
     print(f"  DOI   : {dep['metadata'].get('doi') or state['doi']}")
     out = api("POST", f"/deposit/depositions/{state['id']}/actions/publish", {})
-    print(f"\npublished. DOI: {out.get('doi') or state['doi']}")
+    minted = out.get("doi") or (out.get("metadata") or {}).get("doi") or state["doi"]
+    state["doi"] = minted
+    if out.get("conceptdoi"):
+        state["concept_doi"] = out["conceptdoi"]
+    save_state(state)
+    print(f"\npublished. DOI: {minted}")
+    if state.get("concept_doi"):
+        print(f"concept DOI  : {state['concept_doi']}  (stable across versions)")
     print(f"record: {out.get('links', {}).get('html', '')}")
+    print("\nThis DOI is now stored in the state, so tools/build_deposit.sh and "
+          "tools/build_repo.sh stamp the published one instead of the draft one.")
 
 
 # --------------------------------------------------------------------------- #
@@ -571,6 +615,10 @@ def main() -> None:
     p.add_argument("--as-zip", action="store_true",
                    help="upload the archive plus the root documents, not every file")
     p.set_defaults(func=cmd_upload)
+
+    sub.add_parser("edit-metadata",
+                   help="correct a published record's metadata in place").set_defaults(
+                       func=cmd_edit_metadata)
 
     sub.add_parser("new-version",
                    help="open a new version of a published record").set_defaults(func=cmd_new_version)

@@ -2,9 +2,9 @@ cff-version: 1.2.0
 message: "If you use these data or this code, please cite both this deposit and the article it supports."
 type: dataset
 title: "Soil organic carbon mapping in the Motupe River watershed, northern Peru: observations, covariates, fitted models and prediction surfaces"
-version: 1.0.0
-doi: "10.5281/zenodo.24212915"
-url: "https://doi.org/10.5281/zenodo.24212915"
+version: 1.1.0
+doi: "10.5281/zenodo.24214911"
+url: "https://doi.org/10.5281/zenodo.24214911"
 date-released: "2026-11-13"
 license: CC-BY-4.0
 abstract: >-

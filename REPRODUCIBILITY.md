@@ -4,7 +4,8 @@ This document is an **audit**, not a promise. Every claim below was checked agai
 the repository and in the Zenodo deposit. Where something does not reproduce, it says so, gives
 the number, and names the cause.
 
-Record: [doi:10.5281/zenodo.24212915](https://doi.org/10.5281/zenodo.24212915) ·
+Record: [doi:10.5281/zenodo.24212914](https://doi.org/10.5281/zenodo.24212914) (concept DOI,
+always the latest version; the current one is v1.1.0, doi:10.5281/zenodo.24214911) ·
 Code: [github.com/ccarbajal16/motupe-soc-ensemble](https://github.com/ccarbajal16/motupe-soc-ensemble)
 Article: [doi:10.3389/fsoil.2026.1745154](https://doi.org/10.3389/fsoil.2026.1745154)
 

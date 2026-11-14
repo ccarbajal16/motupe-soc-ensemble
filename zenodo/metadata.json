@@ -3,7 +3,7 @@
     "title": "Soil organic carbon mapping in the Motupe River watershed, northern Peru: observations, covariates, fitted models and prediction surfaces",
     "upload_type": "dataset",
     "publication_date": "2026-11-13",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "language": "eng",
     "access_right": "open",
     "license": "cc-by-4.0",
@@ -50,6 +50,6 @@
         "resource_type": "software"
       }
     ],
-    "notes": "Data and rasters are licensed CC BY 4.0, the same licence as the article. The R code is licensed MIT and each source file header states so. Derived intermediates are deliberately not shipped because the pipeline rebuilds them; see README.md, section 'Intermediate files that are not shipped'."
+    "notes": "Version 1.1.0 corrects the text of this record; the archive (motupe-soc-ensemble-v1.0.0.zip, md5 0c5777e26dcae56beb64e386126aa150) is byte-identical to version 1.0.0. What this version fixes: README.md now documents reproducibility as measured, including that the article's Table 4 cannot be rebuilt from these artifacts; REPRODUCIBILITY.md is new; and the attribution of all_covariates_scaled_imputed.RDS to modules/06_prediction.R is corrected. The documents INSIDE the archive still carry the version 1.0.0 wording - they are immutable - and the record-level files are the current ones. DOI map: this version 10.5281/zenodo.24214911; version 1.0.0 10.5281/zenodo.24212915 (superseded for the record text, identical data); all versions 10.5281/zenodo.24212914. Code, licensed MIT: https://github.com/ccarbajal16/motupe-soc-ensemble"
   }
 }

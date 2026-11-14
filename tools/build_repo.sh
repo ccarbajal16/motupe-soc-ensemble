@@ -157,15 +157,18 @@ fi
 
 # --- stamp the reserved DOI, as build_deposit.sh does ----------------------
 DEPOSIT_DOI=""
+CONCEPT_DOI=""
 if [[ -f zenodo/.deposit-state.json ]]; then
   DEPOSIT_DOI="$(python3 -c 'import json;print(json.load(open("zenodo/.deposit-state.json")).get("doi",""))' 2>/dev/null || true)"
+  CONCEPT_DOI="$(python3 -c 'import json;print(json.load(open("zenodo/.deposit-state.json")).get("concept_doi",""))' 2>/dev/null || true)"
 fi
+[[ -z "$CONCEPT_DOI" ]] && CONCEPT_DOI="$DEPOSIT_DOI"
 if [[ -n "$DEPOSIT_DOI" ]]; then
   RECORD_ID="${DEPOSIT_DOI##*.}"        # 10.5281/zenodo.1234 -> 1234
   for f in "$DEST/README.md" "$DEST/CITATION.cff"; do
     perl -pi -e "s{TODO-DEPOSIT-DOI}{$DEPOSIT_DOI}g; s{<RECORD_ID>}{$RECORD_ID}g" "$f"
   done
-  BADGE="[![DOI](https://zenodo.org/badge/DOI/$DEPOSIT_DOI.svg)](https://doi.org/$DEPOSIT_DOI)"
+  BADGE="[![DOI](https://zenodo.org/badge/DOI/$CONCEPT_DOI.svg)](https://doi.org/$CONCEPT_DOI)"
   perl -pi -e "s{<!-- DOI-BADGE -->}{$BADGE}" "$DEST/README.md"
   perl -pi -e "s{^# DOI-LINE\$}{doi: \"$DEPOSIT_DOI\"\nurl: \"https://doi.org/$DEPOSIT_DOI\"}" "$DEST/CITATION.cff"
   echo "DOI stamped: $DEPOSIT_DOI (record $RECORD_ID)"
