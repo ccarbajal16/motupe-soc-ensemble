@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """zenodo_deposit.py -- create, fill and (only when told) publish a Zenodo record.
 
-Uses Zenodo's documented legacy deposit API, which returns a reserved DOI as
-soon as the draft is created. Standard library only: no pip install.
+Zenodo now runs InvenioRDM v14 behind a compatibility layer. The legacy
+`prereserve_doi` flag is rejected on creation ("Unknown field"), so this script
+creates the draft through /api/deposit/depositions and then reserves the DOI on
+the modern endpoint, with a documented manual fallback in the browser. Standard
+library only: no pip install.
 
 Environment:
     ZENODO_TOKEN   personal access token (deposit:write and deposit:actions)
@@ -13,7 +16,9 @@ Typical run, in this order:
 
     export ZENODO_TOKEN=...            # do not paste the token into a shell history file
     tools/zenodo_deposit.py check                    # does the token work?
-    tools/zenodo_deposit.py create                   # draft + reserved DOI
+    tools/zenodo_deposit.py create                   # draft, then reserve the DOI
+    tools/zenodo_deposit.py adopt --doi 10.5281/...   # only if the reservation
+                                                     # had to be done in the browser
     tools/zenodo_deposit.py upload                   # every file in the staged tree
     tools/zenodo_deposit.py metadata                 # title, authors, licences, relations
     tools/zenodo_deposit.py status                   # DOI, file count, readiness
@@ -68,8 +73,10 @@ def die(msg: str) -> None:
     raise SystemExit(1)
 
 
-def api(method: str, path: str, payload: dict | None = None,
-        raw: bytes | None = None, content_type: str | None = None) -> dict:
+def api_soft(method: str, path: str, payload: dict | None = None,
+             raw: bytes | None = None, content_type: str | None = None,
+             ) -> tuple[bool, object]:
+    """Same as api(), but returns (ok, data_or_error) instead of exiting."""
     url = path if path.startswith("http") else f"{base_url()}/api{path}"
     data = raw if raw is not None else (
         json.dumps(payload).encode() if payload is not None else None)
@@ -81,13 +88,45 @@ def api(method: str, path: str, payload: dict | None = None,
     try:
         with urllib.request.urlopen(req, timeout=600) as resp:
             body = resp.read()
-            return json.loads(body) if body else {}
+            return True, (json.loads(body) if body else {})
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode(errors="replace")[:2000]
-        die(f"{method} {url} -> HTTP {exc.code}\n{detail}")
+        return False, f"HTTP {exc.code}: {exc.read().decode(errors='replace')[:600]}"
     except urllib.error.URLError as exc:
-        die(f"{method} {url} -> {exc.reason}")
-    return {}
+        return False, f"network: {exc.reason}"
+
+
+def api(method: str, path: str, payload: dict | None = None,
+        raw: bytes | None = None, content_type: str | None = None) -> dict:
+    ok, out = api_soft(method, path, payload, raw, content_type)
+    if not ok:
+        url = path if path.startswith("http") else f"{base_url()}/api{path}"
+        die(f"{method} {url} -> {out}")
+    return out  # type: ignore[return-value]
+
+
+def doi_in(obj: object, depth: int = 0) -> str:
+    """Find a reserved DOI in whatever shape the API returned."""
+    if depth > 5 or obj is None:
+        return ""
+    if isinstance(obj, dict):
+        for key in ("prereserve_doi", "pids"):
+            got = doi_in(obj.get(key), depth + 1)
+            if got:
+                return got
+        for key in ("doi", "identifier"):
+            val = obj.get(key)
+            if isinstance(val, str) and val.startswith("10."):
+                return val
+        for val in obj.values():
+            got = doi_in(val, depth + 1)
+            if got:
+                return got
+    elif isinstance(obj, list):
+        for val in obj:
+            got = doi_in(val, depth + 1)
+            if got:
+                return got
+    return ""
 
 
 def load_state() -> dict:
@@ -139,33 +178,116 @@ def cmd_check(_args) -> None:
           f"{'' if TREE.exists() else '  <-- MISSING: run tools/build_deposit.sh'}")
 
 
+def try_reserve_doi(dep_id: int) -> tuple[str, list[str]]:
+    """Reserve a DOI for an existing draft. Returns (doi, attempts_log).
+
+    Zenodo runs InvenioRDM v14 behind a compatibility layer, and the legacy
+    `prereserve_doi` flag is rejected as an unknown field on creation, so the
+    reservation is attempted on the modern endpoints in order of preference.
+    """
+    attempts = [
+        ("POST", f"/records/{dep_id}/draft/pids/doi", {"provider": "datacite"}),
+        ("POST", f"/records/{dep_id}/draft/pids/doi", None),
+        ("POST", f"/records/{dep_id}/draft/pids", {"scheme": "doi"}),
+        ("PUT", f"/deposit/depositions/{dep_id}", {"prereserve_doi": True}),
+    ]
+    log = []
+    for method, path, payload in attempts:
+        ok, out = api_soft(method, path, payload)
+        label = f"{method} {path}" + ("" if payload is None else " +body")
+        if ok:
+            doi = doi_in(out)
+            log.append(f"  ok    {label}" + (f" -> {doi}" if doi else " (no doi in reply)"))
+            if doi:
+                return doi, log
+        else:
+            log.append(f"  fail  {label} -> {out}")
+    return "", log
+
+
 def cmd_create(args) -> None:
     if STATE_FILE.exists() and not args.force:
         state = load_state()
         print(f"deposition already exists: id {state['id']}")
-        print(f"reserved DOI             : {state['doi']}")
+        if state.get("doi"):
+            print(f"reserved DOI             : {state['doi']}")
+        else:
+            print("reserved DOI             : none yet "
+                  "(see `adopt --doi`, or the browser)")
         print("use --force to create another one")
         return
 
+    # metadata is applied later, from zenodo/metadata.json; here we only need a
+    # draft that is open and a bucket to upload into
     payload = {"metadata": {"title": "Motupe SOC data and code (draft)",
                             "upload_type": "dataset",
-                            "access_right": "open"},
-               "prereserve_doi": True}
+                            "access_right": "open"}}
     dep = api("POST", "/deposit/depositions", payload)
     state = {
         "base": base_url(),
         "id": dep["id"],
-        "doi": dep["metadata"]["prereserve_doi"]["doi"],
-        "bucket": dep["links"]["bucket"],
-        "record_url": dep["links"].get("html", ""),
+        "doi": doi_in(dep.get("metadata")),
+        "bucket": dep.get("links", {}).get("bucket", ""),
+        "record_url": dep.get("links", {}).get("html", ""),
+        "uploaded": {},
+    }
+    print(f"created deposition {state['id']} on {base_url()}")
+
+    if not state["doi"]:
+        print("reserving the DOI ...")
+        state["doi"], log = try_reserve_doi(state["id"])
+        for line in log:
+            print(line)
+
+    save_state(state)
+
+    if state["doi"]:
+        print(f"reserved DOI    : {state['doi']}")
+        print(f"edit in browser : {state['record_url']}")
+        print("\nThe reserved DOI already exists: you may cite it now, and it becomes "
+              "permanent when the record is published.")
+        print("\nnext: tools/build_deposit.sh   (stamps that DOI into the package)")
+    else:
+        print(f"edit in browser : {state['record_url']}")
+        die("could not reserve a DOI through the API.\n"
+            "Nothing is lost: the draft exists. Do it in the browser instead:\n"
+            "  1. open the record URL above\n"
+            "  2. click \"Get a DOI now!\" (or the DOI button) and copy the DOI\n"
+            "  3. run: tools/zenodo_deposit.py adopt --doi <that DOI>\n"
+            "  4. then: tools/build_deposit.sh && tools/zenodo_deposit.py upload")
+
+
+def cmd_adopt(args) -> None:
+    """Attach to an existing draft -- typically one created in the browser."""
+    if args.id:
+        dep = api("GET", f"/deposit/depositions/{args.id}")
+    else:
+        listing = api("GET", "/deposit/depositions?size=20&sort=mostrecent")
+        drafts = [d for d in listing if not d.get("submitted")]
+        if not drafts:
+            die("no draft deposition visible for this token: create one in the "
+                f"browser at {base_url()}/deposit/new, then re-run adopt")
+        if len(drafts) > 1 and not args.doi:
+            print("warning: several drafts found, taking the most recent; "
+                  "pass --id to choose another")
+        dep = drafts[0]
+
+    doi = args.doi or doi_in(dep.get("metadata")) or doi_in(dep)
+    state = {
+        "base": base_url(),
+        "id": dep["id"],
+        "doi": doi,
+        "bucket": dep.get("links", {}).get("bucket", ""),
+        "record_url": dep.get("links", {}).get("html", ""),
         "uploaded": {},
     }
     save_state(state)
-    print(f"created deposition {state['id']} on {base_url()}")
-    print(f"reserved DOI       : {state['doi']}")
-    print(f"edit in browser    : {state['record_url']}")
-    print("\nThe reserved DOI already exists: you may cite it now, and it becomes "
-          "permanent when the record is published.")
+    print(f"adopted deposition {state['id']} on {base_url()}")
+    print(f"reserved DOI       : {doi or '(none -- pass --doi)'}")
+    print(f"upload bucket      : {state['bucket'] or '(none -- will use the files API)'}")
+    print(f"browser            : {state['record_url']}")
+    if not doi:
+        die("a DOI is required before packaging: pass --doi 10.5281/zenodo.NNNNNNN")
 
 
 def cmd_upload(args) -> None:
@@ -202,7 +324,14 @@ def cmd_upload(args) -> None:
 def cmd_metadata(_args) -> None:
     state = load_state()
     meta = metadata_payload()
-    api("PUT", f"/deposit/depositions/{state['id']}", meta)
+    ok, out = api_soft("PUT", f"/deposit/depositions/{state['id']}", meta)
+    if not ok:
+        die(f"the API refused the metadata: {out}\n"
+            "Nothing is lost: the draft and the files are already there.\n"
+            f"Open {state.get('record_url', base_url())} and paste the fields from\n"
+            "zenodo/metadata.json by hand (title, description, creators with ORCIDs,\n"
+            "keywords, licence, related identifiers), then publish from the browser.")
+    _ = out
     doi = meta["metadata"].get("doi") or state["doi"]
     print(f"metadata set on deposition {state['id']}")
     print(f"DOI: {doi}")
@@ -258,6 +387,11 @@ def main() -> None:
     p = sub.add_parser("create", help="create the draft and reserve a DOI")
     p.add_argument("--force", action="store_true", help="create a second deposition")
     p.set_defaults(func=cmd_create)
+
+    p = sub.add_parser("adopt", help="attach to an existing draft (e.g. one made in the browser)")
+    p.add_argument("--id", type=int, help="deposition id")
+    p.add_argument("--doi", help="the DOI reserved for that draft")
+    p.set_defaults(func=cmd_adopt)
 
     p = sub.add_parser("upload", help="upload every staged file")
     p.add_argument("--dry-run", action="store_true", help="list, do not send")
